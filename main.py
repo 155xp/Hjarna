@@ -1,12 +1,13 @@
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 
-def run(cmd):
+def run(cmd, env=None):
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, env=env)
 
 
 def parse_args():
@@ -15,6 +16,7 @@ def parse_args():
     parser.add_argument("--posttrain-ratio", type=float, default=0.25)
     parser.add_argument("--pretrain-hours", type=float, default=None)
     parser.add_argument("--posttrain-hours", type=float, default=None)
+    parser.add_argument("--wandb-api-key", "--wanapi", dest="wandb_api_key", default=None)
     return parser.parse_args()
 
 
@@ -34,6 +36,11 @@ def main():
         posttrain_hours = args.total_hours * ratio
         pretrain_hours = args.total_hours - posttrain_hours
 
+    run_env = None
+    if args.wandb_api_key:
+        run_env = os.environ.copy()
+        run_env["WANDB_API_KEY"] = args.wandb_api_key
+
     if not pretrain_ckpt.exists():
         cmd = [
             sys.executable,
@@ -43,9 +50,7 @@ def main():
         ]
         if pretrain_hours is not None:
             cmd += ["--max-train-hours", f"{pretrain_hours}"]
-        run([
-            *cmd
-        ])
+        run([*cmd], env=run_env)
     else:
         print(f"Pretrain checkpoint exists: {pretrain_ckpt}")
 
@@ -60,9 +65,7 @@ def main():
         ]
         if posttrain_hours is not None:
             cmd += ["--max-train-hours", f"{posttrain_hours}"]
-        run([
-            *cmd
-        ])
+        run([*cmd], env=run_env)
     else:
         print(f"Post-train checkpoint exists: {posttrain_ckpt}")
 
