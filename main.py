@@ -16,6 +16,8 @@ def parse_args():
     parser.add_argument("--posttrain-ratio", type=float, default=0.25)
     parser.add_argument("--pretrain-hours", type=float, default=None)
     parser.add_argument("--posttrain-hours", type=float, default=None)
+    parser.add_argument("--pretrain-data-gb", type=float, default=None)
+    parser.add_argument("--posttrain-data-gb", type=float, default=None)
     parser.add_argument("--wandb-api-key", "--wanapi", dest="wandb_api_key", default=None)
     return parser.parse_args()
 
@@ -50,6 +52,8 @@ def main():
         ]
         if pretrain_hours is not None:
             cmd += ["--max-train-hours", f"{pretrain_hours}"]
+        if args.pretrain_data_gb is not None:
+            cmd += ["--max-data-gb", f"{args.pretrain_data_gb}"]
         run([*cmd], env=run_env)
     else:
         print(f"Pretrain checkpoint exists: {pretrain_ckpt}")
@@ -65,6 +69,8 @@ def main():
         ]
         if posttrain_hours is not None:
             cmd += ["--max-train-hours", f"{posttrain_hours}"]
+        if args.posttrain_data_gb is not None:
+            cmd += ["--max-data-gb", f"{args.posttrain_data_gb}"]
         run([*cmd], env=run_env)
     else:
         print(f"Post-train checkpoint exists: {posttrain_ckpt}")
