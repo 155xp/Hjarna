@@ -39,7 +39,7 @@ class TrainConfig:
     max_data_gb: float = 20.0
     max_train_hours: float = 2.0
 
-    n_embd: int = 768
+    n_embd: int = 720
     n_layer: int = 12
     n_head: int = 12
     dropout: float = 0.1

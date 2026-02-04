@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument("--tokenizer-prefix", default="owt2")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--block-size", type=int, default=2048)
-    parser.add_argument("--n-embd", type=int, default=768)
+    parser.add_argument("--n-embd", type=int, default=720)
     parser.add_argument("--n-layer", type=int, default=12)
     parser.add_argument("--n-head", type=int, default=12)
     parser.add_argument("--dropout", type=float, default=0.1)
