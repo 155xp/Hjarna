@@ -7,6 +7,16 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader, IterableDataset
 
 
+def require_zstandard():
+    try:
+        import zstandard  # noqa: F401
+    except Exception as exc:
+        raise RuntimeError(
+            "zstandard is required to read .jsonl.zst files. "
+            "Install with: pip install zstandard"
+        ) from exc
+
+
 def format_conversations(conversations):
     parts = []
     for turn in conversations:
@@ -104,6 +114,7 @@ def infinite_loader(loader):
 
 
 def ensure_tokenizer(args, is_main):
+    require_zstandard()
     os.makedirs(args.tokenizer_dir, exist_ok=True)
     model_prefix = os.path.join(args.tokenizer_dir, args.tokenizer_prefix)
     model_path = model_prefix + ".model"
@@ -144,6 +155,7 @@ def ensure_tokenizer(args, is_main):
 
 
 def build_loaders(args, sp, build_val):
+    require_zstandard()
     max_bytes = None
     if args.max_data_gb and args.max_data_gb > 0:
         max_bytes = int(args.max_data_gb * 1024 * 1024 * 1024)
