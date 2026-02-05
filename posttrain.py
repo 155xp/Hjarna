@@ -31,7 +31,7 @@ class PostTrainConfig:
     eos_id: int = 2
 
     block_size: int = 2048
-    batch_size: int = 16
+    batch_size: int = 8
     eval_batch_size: int = 4
     max_steps: int = 40_000
     eval_interval: int = 1_000
@@ -46,7 +46,7 @@ class PostTrainConfig:
     warmup_steps: int = -1
     min_lr: float = 0.0
 
-    grad_accum_steps: int = 2
+    grad_accum_steps: int = 4
     max_grad_norm: float = 1.0
 
     amp: bool = True

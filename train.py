@@ -31,7 +31,7 @@ class TrainConfig:
     tokenizer_samples: int = 100_000
 
     block_size: int = 2048
-    batch_size: int = 16
+    batch_size: int = 8
     eval_batch_size: int = 4
     max_steps: int = 200_000
     eval_interval: int = 500
@@ -39,9 +39,9 @@ class TrainConfig:
     max_data_gb: float = 20.0
     max_train_hours: float = 2.0
 
-    n_embd: int = 720
+    n_embd: int = 640
     n_layer: int = 12
-    n_head: int = 12
+    n_head: int = 10
     dropout: float = 0.1
     activation_checkpointing: bool = False
 
@@ -52,7 +52,7 @@ class TrainConfig:
     warmup_steps: int = -1
     min_lr: float = 0.0
 
-    grad_accum_steps: int = 2
+    grad_accum_steps: int = 4
     max_grad_norm: float = 1.0
 
     amp: bool = True
