@@ -67,7 +67,6 @@ def load_openwebtext2(args):
         data_files={"train": files},
         split="train",
         streaming=args.streaming,
-        compression="zstd",
     )
 
 
