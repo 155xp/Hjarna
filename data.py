@@ -1,9 +1,12 @@
+import glob
 import itertools
 import os
+import tarfile
 
 import sentencepiece as spm
 import torch
 from datasets import load_dataset
+from huggingface_hub import hf_hub_download
 from torch.utils.data import DataLoader, IterableDataset
 
 
@@ -15,6 +18,68 @@ def require_zstandard():
             "zstandard is required to read .jsonl.zst files. "
             "Install with: pip install zstandard"
         ) from exc
+
+
+def find_openwebtext2_files(cache_dir):
+    search_roots = []
+    if cache_dir:
+        search_roots.append(cache_dir)
+    search_roots.append(os.path.expanduser("~/.cache/huggingface/datasets"))
+
+    for root in search_roots:
+        pattern = os.path.join(root, "downloads", "extracted", "**", "*.jsonl.zst")
+        files = glob.glob(pattern, recursive=True)
+        if files:
+            return sorted(files)
+    return []
+
+
+def extract_openwebtext2_tar(tar_path, extract_dir):
+    os.makedirs(extract_dir, exist_ok=True)
+    marker = os.path.join(extract_dir, ".extracted")
+    if os.path.exists(marker):
+        return
+    with tarfile.open(tar_path, "r:*") as tar:
+        tar.extractall(path=extract_dir)
+    with open(marker, "w", encoding="utf-8") as f:
+        f.write("ok")
+
+
+def load_openwebtext2(args):
+    require_zstandard()
+    files = find_openwebtext2_files(args.cache_dir)
+    if not files:
+        tar_path = hf_hub_download(
+            repo_id="segyges/OpenWebText2",
+            filename="openwebtext2.jsonl.zst.tar",
+            repo_type="dataset",
+            cache_dir=args.cache_dir,
+        )
+        extract_dir = os.path.join(os.path.dirname(tar_path), "openwebtext2_extracted")
+        extract_openwebtext2_tar(tar_path, extract_dir)
+        files = sorted(glob.glob(os.path.join(extract_dir, "*.jsonl.zst")))
+
+    if not files:
+        raise RuntimeError("OpenWebText2 files not found after download/extract.")
+
+    return load_dataset(
+        "json",
+        data_files={"train": files},
+        split="train",
+        streaming=args.streaming,
+        compression="zstd",
+    )
+
+
+def load_hf_dataset(args, split):
+    if args.dataset == "segyges/OpenWebText2":
+        return load_openwebtext2(args)
+    return load_dataset(
+        args.dataset,
+        split=split,
+        streaming=args.streaming,
+        cache_dir=args.cache_dir,
+    )
 
 
 def format_conversations(conversations):
@@ -120,12 +185,7 @@ def ensure_tokenizer(args, is_main):
     model_path = model_prefix + ".model"
 
     if is_main and not os.path.exists(model_path):
-        ds = load_dataset(
-            args.dataset,
-            split="train",
-            streaming=args.streaming,
-            cache_dir=args.cache_dir,
-        )
+        ds = load_hf_dataset(args, split="train")
         if args.streaming and hasattr(ds, "shuffle"):
             ds = ds.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
         samples_path = os.path.join(args.tokenizer_dir, "tokenizer_samples.txt")
@@ -160,12 +220,7 @@ def build_loaders(args, sp, build_val):
     if args.max_data_gb and args.max_data_gb > 0:
         max_bytes = int(args.max_data_gb * 1024 * 1024 * 1024)
 
-    train_raw = load_dataset(
-        args.dataset,
-        split="train",
-        streaming=args.streaming,
-        cache_dir=args.cache_dir,
-    )
+    train_raw = load_hf_dataset(args, split="train")
 
     val_raw = None
     if args.streaming:
