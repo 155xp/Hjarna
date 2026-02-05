@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+import shutil
 
 
 def run(cmd, env=None):
@@ -57,6 +58,10 @@ def main():
         run([*cmd], env=run_env)
     else:
         print(f"Pretrain checkpoint exists: {pretrain_ckpt}")
+
+    pretrain_copy = pretrain_dir / "pretrain.pt"
+    if pretrain_ckpt.exists() and not pretrain_copy.exists():
+        shutil.copy2(pretrain_ckpt, pretrain_copy)
 
     if not posttrain_ckpt.exists():
         cmd = [

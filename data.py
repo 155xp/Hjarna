@@ -1,10 +1,13 @@
 import glob
+import io
 import itertools
+import json
 import os
 import tarfile
 
 import sentencepiece as spm
 import torch
+from datasets import IterableDataset as HFIterableDataset
 from datasets import load_dataset
 from huggingface_hub import hf_hub_download
 from torch.utils.data import DataLoader, IterableDataset
@@ -18,6 +21,28 @@ def require_zstandard():
             "zstandard is required to read .jsonl.zst files. "
             "Install with: pip install zstandard"
         ) from exc
+
+
+def iter_jsonl_zst(path):
+    import zstandard as zstd
+
+    with open(path, "rb") as f:
+        reader = zstd.ZstdDecompressor().stream_reader(f)
+        with io.TextIOWrapper(reader, encoding="utf-8") as text_stream:
+            for line in text_stream:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+
+def openwebtext2_generator(files):
+    for path in files:
+        for record in iter_jsonl_zst(path):
+            yield record
 
 
 def find_openwebtext2_files(cache_dir):
@@ -62,12 +87,8 @@ def load_openwebtext2(args):
     if not files:
         raise RuntimeError("OpenWebText2 files not found after download/extract.")
 
-    return load_dataset(
-        "json",
-        data_files={"train": files},
-        split="train",
-        streaming=args.streaming,
-    )
+    dataset = HFIterableDataset.from_generator(lambda: openwebtext2_generator(files))
+    return dataset
 
 
 def load_hf_dataset(args, split):
