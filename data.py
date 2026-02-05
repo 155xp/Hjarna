@@ -165,8 +165,18 @@ class PackedDataset(IterableDataset):
         if not self.shuffle:
             return dataset
         seed = self.seed + self.epoch
+        if isinstance(dataset, HFIterableDataset):
+            if hasattr(dataset, "shuffle"):
+                try:
+                    return dataset.shuffle(buffer_size=self.shuffle_buffer, seed=seed)
+                except TypeError:
+                    return dataset.shuffle(seed=seed)
+            return dataset
         if hasattr(dataset, "shuffle"):
-            return dataset.shuffle(buffer_size=self.shuffle_buffer, seed=seed)
+            try:
+                return dataset.shuffle(seed=seed)
+            except TypeError:
+                return dataset.shuffle()
         return dataset
 
     def __iter__(self):
@@ -225,7 +235,7 @@ def ensure_tokenizer(args, is_main):
 
     if is_main and not os.path.exists(model_path):
         ds = load_hf_dataset(args, split="train")
-        streaming = args.streaming or isinstance(ds, HFIterableDataset)
+        streaming = isinstance(ds, HFIterableDataset)
         if streaming and hasattr(ds, "shuffle"):
             ds = ds.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
         samples_path = os.path.join(args.tokenizer_dir, "tokenizer_samples.txt")
@@ -261,7 +271,7 @@ def build_loaders(args, sp, build_val):
         max_bytes = int(args.max_data_gb * 1024 * 1024 * 1024)
 
     train_raw = load_hf_dataset(args, split="train")
-    streaming = args.streaming or isinstance(train_raw, HFIterableDataset)
+    streaming = isinstance(train_raw, HFIterableDataset)
 
     val_raw = None
     if streaming:
