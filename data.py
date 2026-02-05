@@ -206,7 +206,8 @@ def ensure_tokenizer(args, is_main):
 
     if is_main and not os.path.exists(model_path):
         ds = load_hf_dataset(args, split="train")
-        if args.streaming and hasattr(ds, "shuffle"):
+        streaming = args.streaming or isinstance(ds, HFIterableDataset)
+        if streaming and hasattr(ds, "shuffle"):
             ds = ds.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
         samples_path = os.path.join(args.tokenizer_dir, "tokenizer_samples.txt")
         with open(samples_path, "w", encoding="utf-8") as f:
@@ -241,9 +242,10 @@ def build_loaders(args, sp, build_val):
         max_bytes = int(args.max_data_gb * 1024 * 1024 * 1024)
 
     train_raw = load_hf_dataset(args, split="train")
+    streaming = args.streaming or isinstance(train_raw, HFIterableDataset)
 
     val_raw = None
-    if args.streaming:
+    if streaming:
         if hasattr(train_raw, "shuffle"):
             train_raw = train_raw.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
         if args.val_examples > 0:
@@ -255,7 +257,7 @@ def build_loaders(args, sp, build_val):
             train_raw = split["train"]
             val_raw = split["test"]
 
-    train_shuffle = not (args.streaming and args.val_examples > 0)
+    train_shuffle = not (streaming and args.val_examples > 0)
     train_dataset = PackedDataset(
         train_raw,
         sp,
