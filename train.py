@@ -183,7 +183,10 @@ def main():
     else:
         use_bf16 = args.bf16 and use_amp
     amp_dtype = torch.bfloat16 if use_bf16 else torch.float16
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp and not use_bf16)
+    try:
+        scaler = torch.amp.GradScaler("cuda", enabled=use_amp and not use_bf16)
+    except Exception:
+        scaler = torch.cuda.amp.GradScaler(enabled=use_amp and not use_bf16)
 
     if args.warmup_steps < 0:
         warmup_steps = max(10, int(0.02 * args.max_steps))

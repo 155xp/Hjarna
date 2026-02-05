@@ -28,7 +28,7 @@ def iter_jsonl_zst(path):
 
     with open(path, "rb") as f:
         reader = zstd.ZstdDecompressor().stream_reader(f)
-        with io.TextIOWrapper(reader, encoding="utf-8") as text_stream:
+        with io.TextIOWrapper(reader, encoding="utf-8", errors="ignore") as text_stream:
             for line in text_stream:
                 line = line.strip()
                 if not line:
@@ -173,9 +173,28 @@ class PackedDataset(IterableDataset):
         self.epoch += 1
         dataset = self._maybe_shuffle(self.hf_dataset)
 
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            num_shards = 1
+            shard_index = 0
+        else:
+            num_shards = worker_info.num_workers
+            shard_index = worker_info.id
+
+        if num_shards > 1 and hasattr(dataset, "shard"):
+            try:
+                dataset = dataset.shard(num_shards=num_shards, index=shard_index)
+                use_manual_shard = False
+            except Exception:
+                use_manual_shard = True
+        else:
+            use_manual_shard = num_shards > 1
+
         buffer = []
         bytes_seen = 0
-        for sample in dataset:
+        for idx, sample in enumerate(dataset):
+            if use_manual_shard and (idx % num_shards) != shard_index:
+                continue
             text = extract_text(sample, self.text_field, self.conversations_field)
             if not text:
                 continue
